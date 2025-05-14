@@ -1,0 +1,12 @@
+# 忽略环境变量文件
+.env
+
+# 常见 Python 忽略项
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 虚拟环境
+venv/
+env/

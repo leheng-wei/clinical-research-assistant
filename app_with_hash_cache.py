@@ -442,6 +442,14 @@ if page == "主页":
     else:
         current_batch = uploaded_files
         queued_files = []
+    if current_batch:
+        tabs = st.tabs([f"📄 {i+1}. {file.name}" for i, file in enumerate(current_batch)])
+        for idx, (tab, uploaded_file) in enumerate(zip(tabs, current_batch)):
+            with tab:
+            # 处理逻辑
+              ...
+    else:
+        st.info("请上传一篇或多篇 PDF 文献以开始处理。")
 
     st.caption(f"📚 当前处理：{len(current_batch)} 篇文献" + (f" | 队列中：{len(queued_files)} 篇" if queued_files else ""))
     

@@ -22,11 +22,10 @@ import re
 
 # ===== 配置 =====
 # 
-from dotenv import load_dotenv
-import os
-
-load_dotenv()  # 加载.env文件
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+# ===== 配置 =====
+DEEPSEEK_API_KEY = st.secrets.get("DEEPSEEK_API_KEY", "")
+if not DEEPSEEK_API_KEY:
+    st.error("请在 .streamlit/secrets.toml 中设置 DEEPSEEK_API_KEY")
 
 # 常量定义
 MAX_FILE_SIZE = 200 * 1024 * 1024  # 200MB

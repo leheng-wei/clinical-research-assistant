@@ -436,16 +436,16 @@ if page == "主页":
     accept_multiple_files=True
 )
 
-if uploaded_files:
+    if uploaded_files:
     # 限制最大数量
-    total_files = len(uploaded_files)
-    if total_files > 5:
-        st.error(f"❌ 超出单次处理限制（5篇）")
-        current_batch = uploaded_files[:5]
-        queued_files = uploaded_files[5:]
-    else:
-        current_batch = uploaded_files
-        queued_files = []
+        total_files = len(uploaded_files)
+        if total_files > 5:
+            st.error(f"❌ 超出单次处理限制（5篇）")
+            current_batch = uploaded_files[:5]
+            queued_files = uploaded_files[5:]
+        else:
+            current_batch = uploaded_files
+            queued_files = []
 
     st.caption(f"📚 当前处理：{len(current_batch)} 篇文献" + (f" | 队列中：{len(queued_files)} 篇" if queued_files else ""))
 
@@ -471,8 +471,8 @@ if uploaded_files:
             st.success("✅ 处理成功")
             st.markdown(result.strip(), unsafe_allow_html=True)
             # ...省略展示下载按钮部分
-else:
-    st.info("👆 请上传一篇或多篇 PDF 文献以开始处理")
+    else:
+        st.info("👆 请上传一篇或多篇 PDF 文献以开始处理")
 
 
     st.caption(f"📚 当前处理：{len(current_batch)} 篇文献" + (f" | 队列中：{len(queued_files)} 篇" if queued_files else ""))

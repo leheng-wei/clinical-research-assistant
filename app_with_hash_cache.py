@@ -431,6 +431,7 @@ if page == "主页":
         """)
     
     uploaded_files = st.file_uploader("📄 上传PDF文件（支持多选，每个文件限制200MB）", type=["pdf"], accept_multiple_files=True)
+    total_files = len(uploaded_files) if uploaded_files else 0
     if uploaded_files:
        total_files = len(uploaded_files)
     if total_files > 5:

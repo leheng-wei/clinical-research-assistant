@@ -20,8 +20,7 @@ import io
 import csv
 import re
 
-# ===== 配置 =====
-# 
+
 # ===== 配置 =====
 DEEPSEEK_API_KEY = st.secrets.get("DEEPSEEK_API_KEY", "")
 if not DEEPSEEK_API_KEY:
@@ -430,50 +429,17 @@ if page == "主页":
         - 处理过程中请勿关闭页面
         """)
     
-    uploaded_files = st.file_uploader(
-    "📄 上传PDF文件（支持多选，每个文件限制200MB）",
-    type=["pdf"],
-    accept_multiple_files=True
-)
-
+    uploaded_files = st.file_uploader("📄 上传PDF文件（支持多选，每个文件限制200MB）", type=["pdf"], accept_multiple_files=True)
     if uploaded_files:
-    # 限制最大数量
-        total_files = len(uploaded_files)
-        if total_files > 5:
-            st.error(f"❌ 超出单次处理限制（5篇）")
-            current_batch = uploaded_files[:5]
-            queued_files = uploaded_files[5:]
-        else:
-            current_batch = uploaded_files
-            queued_files = []
-
-    st.caption(f"📚 当前处理：{len(current_batch)} 篇文献" + (f" | 队列中：{len(queued_files)} 篇" if queued_files else ""))
-
-    # ✅ 创建 tabs 并处理
-    tabs = st.tabs([f"📄 {i+1}. {file.name}" for i, file in enumerate(current_batch)])
-
-    for idx, (tab, uploaded_file) in enumerate(zip(tabs, current_batch)):
-        with tab:
-            uploaded_file.seek(0)  # ✅ 非常关键：确保文件可再次读取
-            file_bytes = uploaded_file.read()
-            uploaded_file.seek(0)  # 再次重置，以防后面还要读取
-
-            file_hash = hashlib.sha256(file_bytes).hexdigest()
-            result = process_file_with_status(uploaded_file)
-
-            if not result:
-                st.error(f"❌ 处理失败：{uploaded_file.name}")
-                continue
-
-            result, csv_lines, prs, word_bytes = result
-
-            # 后续处理和展示逻辑略...
-            st.success("✅ 处理成功")
-            st.markdown(result.strip(), unsafe_allow_html=True)
-            # ...省略展示下载按钮部分
+       total_files = len(uploaded_files)
+    if total_files > 5:
+        st.error(f"❌ 超出单次处理限制（5篇）")
+        # 只处理前5篇
+        current_batch = uploaded_files[:5]
+        queued_files = uploaded_files[5:]
     else:
-        st.info("👆 请上传一篇或多篇 PDF 文献以开始处理")
-
+        current_batch = uploaded_files
+        queued_files = []
 
     st.caption(f"📚 当前处理：{len(current_batch)} 篇文献" + (f" | 队列中：{len(queued_files)} 篇" if queued_files else ""))
     

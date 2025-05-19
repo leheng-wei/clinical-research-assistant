@@ -430,9 +430,11 @@ if page == "主页":
         """)
     
     uploaded_files = st.file_uploader("📄 上传PDF文件（支持多选，每个文件限制200MB）", type=["pdf"], accept_multiple_files=True)
+    
     total_files = 0
     current_batch = []
     queued_files = []
+
     if uploaded_files:
        total_files = len(uploaded_files)
     if total_files > 5:
@@ -447,64 +449,91 @@ if page == "主页":
     st.caption(f"📚 当前处理：{len(current_batch)} 篇文献" + (f" | 队列中：{len(queued_files)} 篇" if queued_files else ""))
     
     # 处理上传的文献
-    tabs = st.tabs([f"📄 {i+1}. {file.name}" for i, file in enumerate(current_batch)])
+    if current_batch:
+        tabs = st.tabs([f"📄 {i+1}. {file.name}" for i, file in enumerate(current_batch)])
 
-    for idx, (tab, uploaded_file) in enumerate(zip(tabs, current_batch)):
-        with tab:
-            # 计算文件的哈希值
-            file_bytes = uploaded_file.read()
-            uploaded_file.seek(0)  # 将文件指针重置到文件开头，以便后续处理
-            file_hash = hashlib.sha256(file_bytes).hexdigest()
+        for idx, (tab, uploaded_file) in enumerate(zip(tabs, current_batch)):
+            with tab:
+                # 计算文件的哈希值
+                file_bytes = uploaded_file.read()
+                uploaded_file.seek(0)  # 将文件指针重置到文件开头，以便后续处理
+                file_hash = hashlib.sha256(file_bytes).hexdigest()
 
-            # 使用新的处理函数
-            result = process_file_with_status(uploaded_file)
-            
-            if not result:
-                st.error(f"❌ 处理失败：{uploaded_file.name}")
-                continue
+                # 使用新的处理函数
+                result = process_file_with_status(uploaded_file)
+                
+                if not result:
+                    st.error(f"❌ 处理失败：{uploaded_file.name}")
+                    continue
 
-            result, csv_lines, prs, word_bytes = result
-            
-            # 结构化转 CSV 行
-            today = datetime.now().strftime("%Y%m%d")
-            csv_bytes = BytesIO("\n".join(csv_lines).encode("utf-8"))
-            csv_bytes.seek(0)
+                result, csv_lines, prs, word_bytes = result
+                
+                # 结构化转 CSV 行
+                today = datetime.now().strftime("%Y%m%d")
+                csv_bytes = BytesIO("\n".join(csv_lines).encode("utf-8"))
+                csv_bytes.seek(0)
 
-            # ===== PPT 生成（带 LOGO 封面） =====
-            prs = Presentation()
-            prs.slide_width = Inches(13.33)
-            prs.slide_height = Inches(7.5)
-            
-            # 封面页
-            cover = prs.slides.add_slide(prs.slide_layouts[6])
-            title_box = cover.shapes.add_textbox(Inches(1), Inches(0.8), Inches(11), Inches(1.5))
-            tf = title_box.text_frame
-            p = tf.paragraphs[0]
-            run = p.add_run()
-            run.text = "研究设计提取报告"
-            run.font.size = Pt(42)
-            run.font.name = "微软雅黑"
-            run.font.bold = True
-            run.font.color.rgb = RGBColor(0, 51, 102)
-            p.alignment = PP_ALIGN.CENTER
-            
-            if os.path.exists(LOGO_PATH):
-                cover.shapes.add_picture(LOGO_PATH, Inches(4.8), Inches(2.0), height=Inches(0.6))
-            
-            sub_box = cover.shapes.add_textbox(Inches(1), Inches(4.0), Inches(11), Inches(0.8))
-            tf2 = sub_box.text_frame
-            tf2.text = f"源文件：  {uploaded_file.name}"
-            tf2.paragraphs[0].font.size = Pt(20)
-            tf2.paragraphs[0].font.name = "微软雅黑"
-            tf2.paragraphs[0].alignment = PP_ALIGN.CENTER
-            
-            # 内容页
-            for i, row in enumerate(csv_lines[1:]):
-                parts = row.split(",", 1)
-                if len(parts) == 2:
+                # ===== PPT 生成（带 LOGO 封面） =====
+                prs = Presentation()
+                prs.slide_width = Inches(13.33)
+                prs.slide_height = Inches(7.5)
+                
+                # 封面页
+                cover = prs.slides.add_slide(prs.slide_layouts[6])
+                title_box = cover.shapes.add_textbox(Inches(1), Inches(0.8), Inches(11), Inches(1.5))
+                tf = title_box.text_frame
+                p = tf.paragraphs[0]
+                run = p.add_run()
+                run.text = "研究设计提取报告"
+                run.font.size = Pt(42)
+                run.font.name = "微软雅黑"
+                run.font.bold = True
+                run.font.color.rgb = RGBColor(0, 51, 102)
+                p.alignment = PP_ALIGN.CENTER
+                
+                if os.path.exists(LOGO_PATH):
+                    cover.shapes.add_picture(LOGO_PATH, Inches(4.8), Inches(2.0), height=Inches(0.6))
+                
+                sub_box = cover.shapes.add_textbox(Inches(1), Inches(4.0), Inches(11), Inches(0.8))
+                tf2 = sub_box.text_frame
+                tf2.text = f"源文件：  {uploaded_file.name}"
+                tf2.paragraphs[0].font.size = Pt(20)
+                tf2.paragraphs[0].font.name = "微软雅黑"
+                tf2.paragraphs[0].alignment = PP_ALIGN.CENTER
+                
+                # 内容页
+                for i, row in enumerate(csv_lines[1:]):
+                    parts = row.split(",", 1)
+                    if len(parts) == 2:
+                        slide = prs.slides.add_slide(prs.slide_layouts[1])
+                        title_shape = slide.shapes.title
+                        title_shape.text = parts[0]
+                        title_frame = title_shape.text_frame
+                        title_frame.paragraphs[0].alignment = PP_ALIGN.LEFT
+                        title_run = title_frame.paragraphs[0].runs[0]
+                        title_run.font.name = "微软雅黑"
+                        title_run.font.bold = True
+                        title_run.font.color.rgb = RGBColor(0, 51, 102)
+                        
+                        textbox = slide.placeholders[1]
+                        textbox.text = parts[1].replace("；", "\n")
+                        for p in textbox.text_frame.paragraphs:
+                            for run in p.runs:
+                                run.font.size = Pt(18)
+                                run.font.name = "微软雅黑"
+                        
+                        footer = slide.shapes.add_textbox(Inches(0.5), Inches(6.9), Inches(12), Inches(0.5))
+                        tf_footer = footer.text_frame
+                        tf_footer.text = f"博扶AI创意组 · 结构化助手 · 第 {i+1} 页"
+                        tf_footer.paragraphs[0].font.size = Pt(10)
+                        tf_footer.paragraphs[0].font.name = "微软雅黑"
+                        tf_footer.paragraphs[0].alignment = PP_ALIGN.RIGHT
+                
+                # 添加补充说明页
+                if "补充说明" in result:
                     slide = prs.slides.add_slide(prs.slide_layouts[1])
                     title_shape = slide.shapes.title
-                    title_shape.text = parts[0]
+                    title_shape.text = "补充说明"
                     title_frame = title_shape.text_frame
                     title_frame.paragraphs[0].alignment = PP_ALIGN.LEFT
                     title_run = title_frame.paragraphs[0].runs[0]
@@ -513,7 +542,7 @@ if page == "主页":
                     title_run.font.color.rgb = RGBColor(0, 51, 102)
                     
                     textbox = slide.placeholders[1]
-                    textbox.text = parts[1].replace("；", "\n")
+                    textbox.text = result.split("补充说明：")[1].strip()
                     for p in textbox.text_frame.paragraphs:
                         for run in p.runs:
                             run.font.size = Pt(18)
@@ -521,128 +550,104 @@ if page == "主页":
                     
                     footer = slide.shapes.add_textbox(Inches(0.5), Inches(6.9), Inches(12), Inches(0.5))
                     tf_footer = footer.text_frame
-                    tf_footer.text = f"博扶AI创意组 · 结构化助手 · 第 {i+1} 页"
+                    tf_footer.text = f"博扶AI创意组 · 结构化助手 · 补充说明页"
                     tf_footer.paragraphs[0].font.size = Pt(10)
                     tf_footer.paragraphs[0].font.name = "微软雅黑"
                     tf_footer.paragraphs[0].alignment = PP_ALIGN.RIGHT
-            
-            # 添加补充说明页
-            if "补充说明" in result:
-                slide = prs.slides.add_slide(prs.slide_layouts[1])
-                title_shape = slide.shapes.title
-                title_shape.text = "补充说明"
-                title_frame = title_shape.text_frame
-                title_frame.paragraphs[0].alignment = PP_ALIGN.LEFT
-                title_run = title_frame.paragraphs[0].runs[0]
-                title_run.font.name = "微软雅黑"
-                title_run.font.bold = True
-                title_run.font.color.rgb = RGBColor(0, 51, 102)
                 
-                textbox = slide.placeholders[1]
-                textbox.text = result.split("补充说明：")[1].strip()
-                for p in textbox.text_frame.paragraphs:
-                    for run in p.runs:
-                        run.font.size = Pt(18)
-                        run.font.name = "微软雅黑"
+                pptx_bytes = BytesIO()
+                prs.save(pptx_bytes)
+                pptx_bytes.seek(0)
+
+                # ===== 展示结果 =====
+                st.success("✅ 已成功提取结构化研究设计信息")
+                st.markdown(result.strip(), unsafe_allow_html=True)
                 
-                footer = slide.shapes.add_textbox(Inches(0.5), Inches(6.9), Inches(12), Inches(0.5))
-                tf_footer = footer.text_frame
-                tf_footer.text = f"博扶AI创意组 · 结构化助手 · 补充说明页"
-                tf_footer.paragraphs[0].font.size = Pt(10)
-                tf_footer.paragraphs[0].font.name = "微软雅黑"
-                tf_footer.paragraphs[0].alignment = PP_ALIGN.RIGHT
-            
-            pptx_bytes = BytesIO()
-            prs.save(pptx_bytes)
-            pptx_bytes.seek(0)
+                # 添加提示信息
+                st.info("💡 提示：请及时下载生成的文件，历史记录将在7天后自动清理。")
+                st.warning("⚠️ 注意：文件仅保存在浏览器会话中，关闭页面后将无法访问。")
 
-            # ===== 展示结果 =====
-            st.success("✅ 已成功提取结构化研究设计信息")
-            st.markdown(result.strip(), unsafe_allow_html=True)
-            
-            # 添加提示信息
-            st.info("💡 提示：请及时下载生成的文件，历史记录将在7天后自动清理。")
-            st.warning("⚠️ 注意：文件仅保存在浏览器会话中，关闭页面后将无法访问。")
+                # 生成文件名
+                today = datetime.now().strftime("%Y%m%d")
+                base_name = os.path.splitext(uploaded_file.name)[0]
 
-            # 生成文件名
-            today = datetime.now().strftime("%Y%m%d")
-            base_name = os.path.splitext(uploaded_file.name)[0]
+                st.markdown("#### 📁 下载导出文件")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.download_button("📥 下载 CSV", csv_bytes, f"{today}_{base_name}_结构化.csv", mime="text/csv")
+                with col2:
+                    st.download_button("📊 下载 PPT", pptx_bytes, f"{today}_{base_name}_结构化.pptx", mime="application/vnd.openxmlformats-officedocument.presentationml.presentation")
+                with col3:
+                    st.download_button("📄 下载 Word", word_bytes, f"{today}_{base_name}_结构化.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 
-            st.markdown("#### 📁 下载导出文件")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.download_button("📥 下载 CSV", csv_bytes, f"{today}_{base_name}_结构化.csv", mime="text/csv")
-            with col2:
-                st.download_button("📊 下载 PPT", pptx_bytes, f"{today}_{base_name}_结构化.pptx", mime="application/vnd.openxmlformats-officedocument.presentationml.presentation")
-            with col3:
-                st.download_button("📄 下载 Word", word_bytes, f"{today}_{base_name}_结构化.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-
-            # 保存记录到历史
-            record = {
-                "id": str(uuid.uuid4()),
-                "文件名": uploaded_file.name,
-                "hash": file_hash,
-                "时间": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "提取内容": result.strip(),
-                "文件数据": {
-                    "CSV": base64.b64encode(csv_bytes.getvalue()).decode('utf-8'),
-                    "PPT": base64.b64encode(pptx_bytes.getvalue()).decode('utf-8'),
-                    "Word": base64.b64encode(word_bytes.getvalue()).decode('utf-8')
+                # 保存记录到历史
+                record = {
+                    "id": str(uuid.uuid4()),
+                    "文件名": uploaded_file.name,
+                    "hash": file_hash,
+                    "时间": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "提取内容": result.strip(),
+                    "文件数据": {
+                        "CSV": base64.b64encode(csv_bytes.getvalue()).decode('utf-8'),
+                        "PPT": base64.b64encode(pptx_bytes.getvalue()).decode('utf-8'),
+                        "Word": base64.b64encode(word_bytes.getvalue()).decode('utf-8')
+                    }
                 }
-            }
-            st.session_state.history.append(record)
-            save_history(st.session_state.history)
+                st.session_state.history.append(record)
+                save_history(st.session_state.history)
 
-            st.markdown("---")
-            st.subheader("📜 历史处理记录")
-            for record in st.session_state.history:
-                with st.expander(f"📄 `{record['文件名']}`"):
-                    col1, col2 = st.columns([0.9, 0.1])
-                    with col1:
-                        st.markdown(f"📁 文件 Hash: `{record['hash']}`")
-                        st.markdown(f"⏰ 时间: {record['时间']}")
-                        st.markdown(f"📄 提取内容:\n{record['提取内容']}")
+                st.markdown("---")
+                st.subheader("📜 历史处理记录")
+                for record in st.session_state.history:
+                    with st.expander(f"📄 `{record['文件名']}`"):
+                        col1, col2 = st.columns([0.9, 0.1])
+                        with col1:
+                            st.markdown(f"📁 文件 Hash: `{record['hash']}`")
+                            st.markdown(f"⏰ 时间: {record['时间']}")
+                            st.markdown(f"📄 提取内容:\n{record['提取内容']}")
 
-                        # 从base64字符串恢复数据并提供下载
-                        st.markdown(f"#### 下载文件:")
-                        download_col1, download_col2, download_col3 = st.columns(3)
-                        with download_col1:
-                            try:
-                                csv_data = base64.b64decode(record['文件数据']['CSV'])
-                                st.download_button("📥 下载 CSV", 
-                                                data=csv_data, 
-                                                file_name=f"{record['文件名']}_结构化.csv",
-                                                mime="text/csv",
-                                                key=f"csv_{record['id']}")
-                            except Exception as e:
-                                st.error(f"CSV数据加载失败")
-                        
-                        with download_col2:
-                            try:
-                                pptx_data = base64.b64decode(record['文件数据']['PPT'])
-                                st.download_button("📊 下载 PPT", 
-                                                data=pptx_data,
-                                                file_name=f"{record['文件名']}_结构化.pptx",
-                                                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                                                key=f"ppt_{record['id']}")
-                            except Exception as e:
-                                st.error(f"PPT数据加载失败")
-                        
-                        with download_col3:
-                            try:
-                                word_data = base64.b64decode(record['文件数据']['Word'])
-                                st.download_button("📄 下载 Word",
-                                                data=word_data,
-                                                file_name=f"{record['文件名']}_结构化.docx",
-                                                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                                                key=f"word_{record['id']}")
-                            except Exception as e:
-                                st.error(f"Word数据加载失败")
-                        
-                    with col2:
-                        if st.button("🗑️", key=f"delete_{record['id']}", help="删除此记录"):
-                            delete_record(record['id'])
-                            st.rerun()
+                            # 从base64字符串恢复数据并提供下载
+                            st.markdown(f"#### 下载文件:")
+                            download_col1, download_col2, download_col3 = st.columns(3)
+                            with download_col1:
+                                try:
+                                    csv_data = base64.b64decode(record['文件数据']['CSV'])
+                                    st.download_button("📥 下载 CSV", 
+                                                    data=csv_data, 
+                                                    file_name=f"{record['文件名']}_结构化.csv",
+                                                    mime="text/csv",
+                                                    key=f"csv_{record['id']}")
+                                except Exception as e:
+                                    st.error(f"CSV数据加载失败")
+                            
+                            with download_col2:
+                                try:
+                                    pptx_data = base64.b64decode(record['文件数据']['PPT'])
+                                    st.download_button("📊 下载 PPT", 
+                                                    data=pptx_data,
+                                                    file_name=f"{record['文件名']}_结构化.pptx",
+                                                    mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                                                    key=f"ppt_{record['id']}")
+                                except Exception as e:
+                                    st.error(f"PPT数据加载失败")
+                            
+                            with download_col3:
+                                try:
+                                    word_data = base64.b64decode(record['文件数据']['Word'])
+                                    st.download_button("📄 下载 Word",
+                                                    data=word_data,
+                                                    file_name=f"{record['文件名']}_结构化.docx",
+                                                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                                    key=f"word_{record['id']}")
+                                except Exception as e:
+                                    st.error(f"Word数据加载失败")
+                            
+                        with col2:
+                            if st.button("🗑️", key=f"delete_{record['id']}", help="删除此记录"):
+                                delete_record(record['id'])
+                                st.rerun()
+    else:
+        st.info("请上传至少一个PDF文件以开始处理。")                           
 
 elif page == "后台管理":
     admin_dashboard()
